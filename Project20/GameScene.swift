@@ -13,13 +13,17 @@ final class GameScene: SKScene {
     
     private var gameTimer: Timer?
     private var fireworks = [SKNode]()
+    private var gameOverLabel: SKLabelNode!
+    private var newGameLabel: SKLabelNode!
     private var scoreLabel: SKLabelNode!
     private var score = 0 {
         didSet {
             scoreLabel.text = "Score: \(score)"
         }
     }
+    private var launches = 0
     
+    private let maxLaunches = 20
     private let leftEdge = -22
     private let bottomEdge = -22
     private let rightEdge = 1024 + 22
@@ -40,7 +44,22 @@ final class GameScene: SKScene {
         scoreLabel.text = "Score: 0"
         addChild(scoreLabel)
         
-        gameTimer = Timer.scheduledTimer(timeInterval: 6, target: self, selector: #selector(launchFireworks), userInfo: nil, repeats: true)
+        gameOverLabel = SKLabelNode(fontNamed: "chalkduster")
+        gameOverLabel.position = CGPoint(x: 512, y: 384)
+        gameOverLabel.horizontalAlignmentMode = .center
+        gameOverLabel.zPosition = 1
+        gameOverLabel.text = "Game Over"
+        gameOverLabel.fontSize = 48
+        
+        newGameLabel = SKLabelNode(fontNamed: "chalkduster")
+        newGameLabel.position = CGPoint(x: 512, y: 334)
+        newGameLabel.horizontalAlignmentMode = .center
+        newGameLabel.zPosition = 1
+        newGameLabel.text = "NEW GAME"
+        newGameLabel.name = "newGame"
+        newGameLabel.fontSize = 28
+        
+        startGame()
     }
     
     override func update(_ currentTime: TimeInterval) {
@@ -93,6 +112,27 @@ final class GameScene: SKScene {
     
     // MARK: - Private Methods
     
+    private func startGame() {
+        score = 0
+        launches = 0
+        
+        gameOverLabel.removeFromParent()
+        newGameLabel.removeFromParent()
+        
+        gameTimer = Timer.scheduledTimer(timeInterval: 6, target: self, selector: #selector(launchFireworks), userInfo: nil, repeats: true)
+    }
+    
+    private func gameOver() {
+        gameTimer?.invalidate()
+        
+        for firework in fireworks {
+            firework.removeFromParent()
+        }
+        
+        addChild(gameOverLabel)
+        addChild(newGameLabel)
+    }
+    
     private func createFirework(xMovement: CGFloat, x: Int, y: Int) {
         // Create the firework container
         let node = SKNode()
@@ -137,6 +177,11 @@ final class GameScene: SKScene {
         let nodesAtPoint = nodes(at: touch.location(in: self))
         
         for case let node as SKSpriteNode in nodesAtPoint {
+            if node.name == "newGame" {
+                startGame()
+                return
+            }
+            
             guard node.name == "firework" else { continue }
             
             for parent in fireworks {
@@ -156,6 +201,12 @@ final class GameScene: SKScene {
     @objc
     private func launchFireworks() {
         let movementAmount: CGFloat = 1800
+        
+        launches += 1
+        if launches >= maxLaunches {
+            gameOver()
+            return
+        }
         
         switch Int.random(in: 0...3) {
         case 0:
